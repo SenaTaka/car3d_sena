@@ -147,6 +147,7 @@ export const useVehiclePhysics = (
       if (hit) {
         const hitDistance = hit.toi + 0.1; // Add offset back
         const hitPoint = rayOrigin.clone().add(downDir.clone().multiplyScalar(hit.toi));
+        const hitNormal = new THREE.Vector3(hit.normal.x, hit.normal.y, hit.normal.z);
         
         // 1. Velocity at contact point (needed for both suspension damping and tires)
         // V_point = V_cm + omega x r
