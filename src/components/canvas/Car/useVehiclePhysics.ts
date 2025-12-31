@@ -24,6 +24,9 @@ export const useVehiclePhysics = (
   const params = useVehicleStore((state) => state.params);
   const setParams = useVehicleStore((state) => state.setParams);
   const setTelemetry = useVehicleStore((state) => state.setTelemetry);
+  const isPaused = useVehicleStore((state) => state.isPaused);
+  const shouldReset = useVehicleStore((state) => state.shouldReset);
+  const resetComplete = useVehicleStore((state) => state.resetComplete);
   const [, getKeys] = useKeyboardControls();
 
   // Leva controls
@@ -69,6 +72,20 @@ export const useVehiclePhysics = (
   });
   
   useControls('Powertrain', {
+    maxDriveForce: {
+      value: params.powertrain.maxDriveForce,
+      min: 0,
+      max: 15000,
+      step: 100,
+      onChange: (v) => setParams({ powertrain: { ...params.powertrain, maxDriveForce: v } }),
+    },
+    maxBrakeForce: {
+      value: params.powertrain.maxBrakeForce,
+      min: 0,
+      max: 20000,
+      step: 100,
+      onChange: (v) => setParams({ powertrain: { ...params.powertrain, maxBrakeForce: v } }),
+    },
     tvGain: {
       value: params.powertrain.tvGain,
       min: 0,
@@ -78,21 +95,47 @@ export const useVehiclePhysics = (
     },
   });
 
+  useControls('Steering', {
+    maxSteerAngle: {
+      value: params.maxSteerAngle,
+      min: 0.1,
+      max: 1.0,
+      step: 0.05,
+      onChange: (v) => setParams({ maxSteerAngle: v }),
+    },
+  });
+
   // Store previous compression for damping calculation
   const prevCompressions = useRef<number[]>([0, 0, 0, 0]);
 
   useFrame((state, delta) => {
     if (!chassisBody.current || delta <= 0) return;
 
-    const { suspension, tires, powertrain } = params;
+    const { suspension, tires, powertrain, maxSteerAngle } = params;
     const chassis = chassisBody.current;
+    
+    // Handle reset
+    if (shouldReset) {
+      chassis.setTranslation({ x: 0, y: 1, z: 0 }, true);
+      chassis.setLinvel({ x: 0, y: 0, z: 0 }, true);
+      chassis.setAngvel({ x: 0, y: 0, z: 0 }, true);
+      chassis.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
+      prevCompressions.current = [0, 0, 0, 0];
+      resetComplete();
+      return;
+    }
+
+    // Handle pause
+    if (isPaused) {
+      return;
+    }
+
     const keys = getKeys();
     
     // Input handling
     const throttle = keys.forward ? 1 : 0;
     const brake = keys.backward ? 1 : (keys.brake ? 1 : 0);
     const steerInput = (keys.left ? 1 : 0) - (keys.right ? 1 : 0);
-    const maxSteerAngle = 0.5; // rad
     const currentSteerAngle = steerInput * maxSteerAngle;
 
     // Get chassis world transform
@@ -272,6 +315,8 @@ export const useVehiclePhysics = (
         speed: isNaN(speed) ? 0 : speed,
         steerAngle: isNaN(currentSteerAngle) ? 0 : currentSteerAngle,
         yawRate: isNaN((chassis as any).angvel().y) ? 0 : (chassis as any).angvel().y,
+        throttle: throttle,
+        brake: brake,
         wheelLoads: wheelLoads.map(v => isNaN(v) ? 0 : v) as [number, number, number, number],
         wheelForces: wheelForces.map(v => isNaN(v) ? 0 : v) as [number, number, number, number],
     });

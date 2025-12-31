@@ -3,7 +3,7 @@
 import { useVehicleStore } from '@/store/useVehicleStore';
 
 function TelemetryPanel() {
-  const { speed, steerAngle, yawRate } = useVehicleStore((state) => state.telemetry);
+  const { speed, steerAngle, yawRate, throttle, brake } = useVehicleStore((state) => state.telemetry);
   
   // Convert m/s to km/h
   const speedKmh = (speed * 3.6).toFixed(1);
@@ -19,6 +19,10 @@ function TelemetryPanel() {
         <div className="text-right">{steerDeg}°</div>
         <div>Yaw Rate:</div>
         <div className="text-right">{yawRate.toFixed(2)} rad/s</div>
+        <div>Throttle:</div>
+        <div className="text-right">{(throttle * 100).toFixed(0)}%</div>
+        <div>Brake:</div>
+        <div className="text-right">{(brake * 100).toFixed(0)}%</div>
       </div>
     </div>
   );
@@ -71,10 +75,15 @@ export default function HUD() {
     <div className="absolute top-4 left-4 z-10 pointer-events-none select-none">
       <TelemetryPanel />
       <WheelStatus />
-      <div className="mt-4 text-white/70 text-xs">
-        <p>Controls:</p>
-        <p>WASD / Arrows : Drive</p>
+      <div className="mt-4 text-white/70 text-xs bg-black/50 p-3 rounded-lg">
+        <p className="font-bold mb-1">Controls:</p>
+        <p>W / ↑ : Throttle</p>
+        <p>S / ↓ : Brake</p>
+        <p>A / ← : Steer Left</p>
+        <p>D / → : Steer Right</p>
         <p>Space : Brake</p>
+        <p>R : Reset Vehicle</p>
+        <p>Esc : Pause</p>
       </div>
     </div>
   );
