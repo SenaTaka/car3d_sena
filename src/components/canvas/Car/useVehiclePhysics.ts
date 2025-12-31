@@ -24,6 +24,9 @@ export const useVehiclePhysics = (
   const params = useVehicleStore((state) => state.params);
   const setParams = useVehicleStore((state) => state.setParams);
   const setTelemetry = useVehicleStore((state) => state.setTelemetry);
+  const isPaused = useVehicleStore((state) => state.isPaused);
+  const shouldReset = useVehicleStore((state) => state.shouldReset);
+  const resetComplete = useVehicleStore((state) => state.resetComplete);
   const [, getKeys] = useKeyboardControls();
 
   // Leva controls
@@ -69,6 +72,20 @@ export const useVehiclePhysics = (
   });
   
   useControls('Powertrain', {
+    maxDriveForce: {
+      value: params.powertrain.maxDriveForce,
+      min: 0,
+      max: 15000,
+      step: 100,
+      onChange: (v) => setParams({ powertrain: { ...params.powertrain, maxDriveForce: v } }),
+    },
+    maxBrakeForce: {
+      value: params.powertrain.maxBrakeForce,
+      min: 0,
+      max: 20000,
+      step: 100,
+      onChange: (v) => setParams({ powertrain: { ...params.powertrain, maxBrakeForce: v } }),
+    },
     tvGain: {
       value: params.powertrain.tvGain,
       min: 0,
@@ -78,35 +95,92 @@ export const useVehiclePhysics = (
     },
   });
 
+  useControls('Steering', {
+    maxSteerAngle: {
+      value: params.maxSteerAngle,
+      min: 0.1,
+      max: 1.0,
+      step: 0.05,
+      onChange: (v) => setParams({ maxSteerAngle: v }),
+    },
+  });
+
   // Store previous compression for damping calculation
   const prevCompressions = useRef<number[]>([0, 0, 0, 0]);
+  const isInitialized = useRef(false);
 
   useFrame((state, delta) => {
     if (!chassisBody.current || delta <= 0) return;
 
-    const { suspension, tires, powertrain } = params;
+    const { suspension, tires, powertrain, maxSteerAngle } = params;
     const chassis = chassisBody.current;
+    
+    // Get chassis world transform - with safety check
+    try {
+      const translation = chassis.translation();
+      const rotation = chassis.rotation();
+      const velocity = chassis.linvel();
+      const angularVel = chassis.angvel();
+      
+      // Early return if physics body not initialized
+      if (!translation || !rotation || !velocity || !angularVel) {
+        return;
+      }
+      
+      // Mark as initialized
+      if (!isInitialized.current) {
+        isInitialized.current = true;
+      }
+    } catch (e) {
+      // Physics not ready yet
+      return;
+    }
+    
+    // Handle reset
+    if (shouldReset) {
+      try {
+        chassis.setTranslation({ x: 0, y: 1, z: 0 }, true);
+        chassis.setLinvel({ x: 0, y: 0, z: 0 }, true);
+        chassis.setAngvel({ x: 0, y: 0, z: 0 }, true);
+        chassis.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
+        prevCompressions.current = [0, 0, 0, 0];
+        resetComplete();
+      } catch (e) {
+        console.error("Reset failed:", e);
+      }
+      return;
+    }
+
+    // Handle pause
+    if (isPaused) {
+      return;
+    }
+
     const keys = getKeys();
     
     // Input handling
     const throttle = keys.forward ? 1 : 0;
     const brake = keys.backward ? 1 : (keys.brake ? 1 : 0);
     const steerInput = (keys.left ? 1 : 0) - (keys.right ? 1 : 0);
-    const maxSteerAngle = 0.5; // rad
     const currentSteerAngle = steerInput * maxSteerAngle;
 
-    // Get chassis world transform
+    // Get physics state again (now we know it's initialized)
     const translation = chassis.translation();
     const rotation = chassis.rotation();
+    const velocity = chassis.linvel();
 
     // Safety check for NaN/Infinite in physics state
-    if (!translation || !Number.isFinite(translation.x) || !Number.isFinite(translation.y) || !Number.isFinite(translation.z) ||
-        !rotation || !Number.isFinite(rotation.x) || !Number.isFinite(rotation.y) || !Number.isFinite(rotation.z) || !Number.isFinite(rotation.w)) {
+    if (!Number.isFinite(translation.x) || !Number.isFinite(translation.y) || !Number.isFinite(translation.z) ||
+        !Number.isFinite(rotation.x) || !Number.isFinite(rotation.y) || !Number.isFinite(rotation.z) || !Number.isFinite(rotation.w)) {
         console.warn("Physics explosion detected! Resetting vehicle.");
-        chassis.setTranslation({ x: 0, y: 1, z: 0 }, true);
-        chassis.setLinvel({ x: 0, y: 0, z: 0 }, true);
-        chassis.setAngvel({ x: 0, y: 0, z: 0 }, true);
-        chassis.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
+        try {
+          chassis.setTranslation({ x: 0, y: 1, z: 0 }, true);
+          chassis.setLinvel({ x: 0, y: 0, z: 0 }, true);
+          chassis.setAngvel({ x: 0, y: 0, z: 0 }, true);
+          chassis.setRotation({ x: 0, y: 0, z: 0, w: 1 }, true);
+        } catch (e) {
+          console.error("Reset on explosion failed:", e);
+        }
         return;
     }
 
@@ -124,7 +198,6 @@ export const useVehiclePhysics = (
     const wheelForces: [number, number, number, number] = [0, 0, 0, 0];
     
     // Calculate Speed
-    const velocity = chassis.linvel();
     const speed = Math.sqrt(velocity.x**2 + velocity.y**2 + velocity.z**2);
 
     WHEEL_OFFSETS.forEach((offset, index) => {
@@ -151,7 +224,7 @@ export const useVehiclePhysics = (
         
         // 1. Velocity at contact point (needed for both suspension damping and tires)
         // V_point = V_cm + omega x r
-        const linvel = chassis.linvel();
+        const linvel = velocity;
         const angvel = chassis.angvel();
         const r = worldPoint.clone().sub(translation);
         const omega = new THREE.Vector3(angvel.x, angvel.y, angvel.z);
@@ -268,10 +341,13 @@ export const useVehiclePhysics = (
     });
 
     // Update Telemetry
+    const angVel = chassis.angvel();
     setTelemetry({
         speed: isNaN(speed) ? 0 : speed,
         steerAngle: isNaN(currentSteerAngle) ? 0 : currentSteerAngle,
-        yawRate: isNaN((chassis as any).angvel().y) ? 0 : (chassis as any).angvel().y,
+        yawRate: (angVel && !isNaN(angVel.y)) ? angVel.y : 0,
+        throttle: throttle,
+        brake: brake,
         wheelLoads: wheelLoads.map(v => isNaN(v) ? 0 : v) as [number, number, number, number],
         wheelForces: wheelForces.map(v => isNaN(v) ? 0 : v) as [number, number, number, number],
     });

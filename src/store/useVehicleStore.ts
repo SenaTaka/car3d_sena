@@ -18,6 +18,7 @@ export type VehicleParams = {
     maxBrakeForce: number; // N (例: 8000)
     tvGain: number;        // scalar (例: 100) - トルクベクタリング強度
   };
+  maxSteerAngle: number; // rad (例: 0.5) - 最大操舵角
 };
 
 // リアルタイムテレメトリ (60fps更新)
@@ -25,6 +26,8 @@ export type TelemetryData = {
   speed: number;       // m/s
   steerAngle: number;  // rad
   yawRate: number;     // rad/s
+  throttle: number;    // 0-1
+  brake: number;       // 0-1
   wheelLoads: [number, number, number, number]; // FL, FR, RL, RR (N)
   wheelForces: [number, number, number, number]; // Longitudinal Force (N)
 };
@@ -32,8 +35,15 @@ export type TelemetryData = {
 interface VehicleStore {
   params: VehicleParams;
   telemetry: TelemetryData;
+  isPaused: boolean;
+  shouldReset: boolean;
+  trackType: 'straight' | 'circle' | 'slalom';
   setParams: (params: Partial<VehicleParams>) => void;
   setTelemetry: (data: Partial<TelemetryData>) => void;
+  setPaused: (paused: boolean) => void;
+  requestReset: () => void;
+  resetComplete: () => void;
+  setTrackType: (trackType: 'straight' | 'circle' | 'slalom') => void;
 }
 
 export const useVehicleStore = create<VehicleStore>((set) => ({
@@ -54,14 +64,20 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
       maxBrakeForce: 8000,
       tvGain: 100,
     },
+    maxSteerAngle: 0.5,
   },
   telemetry: {
     speed: 0,
     steerAngle: 0,
     yawRate: 0,
+    throttle: 0,
+    brake: 0,
     wheelLoads: [0, 0, 0, 0],
     wheelForces: [0, 0, 0, 0],
   },
+  isPaused: false,
+  shouldReset: false,
+  trackType: 'straight',
   setParams: (newParams) =>
     set((state) => ({
       params: { ...state.params, ...newParams },
@@ -70,4 +86,8 @@ export const useVehicleStore = create<VehicleStore>((set) => ({
     set((state) => ({
       telemetry: { ...state.telemetry, ...newData },
     })),
+  setPaused: (paused) => set({ isPaused: paused }),
+  requestReset: () => set({ shouldReset: true }),
+  resetComplete: () => set({ shouldReset: false }),
+  setTrackType: (trackType) => set({ trackType }),
 }));

@@ -3,7 +3,7 @@
 import { Canvas } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
 import { Suspense } from 'react';
-import { Environment, OrbitControls, KeyboardControls, KeyboardControlsEntry } from '@react-three/drei';
+import { OrbitControls, KeyboardControls, KeyboardControlsEntry } from '@react-three/drei';
 
 export enum Controls {
   forward = 'forward',
@@ -29,10 +29,10 @@ export default function Scene({ children }: SceneProps) {
   return (
     <KeyboardControls map={map}>
       <Canvas shadows camera={{ position: [10, 10, 10], fov: 50 }}>
+        <color attach="background" args={['#1a1a2e']} />
         <ambientLight intensity={0.5} />
         <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
         <Suspense fallback={null}>
-          <Environment preset="city" />
           <Physics debug>
             {children}
           </Physics>
