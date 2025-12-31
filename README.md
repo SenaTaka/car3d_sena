@@ -1,36 +1,155 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EV In-Wheel Motor Simulator
+
+教育用3D運転シミュレータ - 後輪インホイルモーター×2による独立駆動とトルクベクタリングを学ぶ
+
+Educational 3D driving simulator with independent rear wheel in-wheel motors and torque vectoring.
+
+## Overview
+
+This browser-based 3D vehicle dynamics simulator demonstrates:
+- Vehicle motion (acceleration, braking, cornering)
+- Tire friction and friction circle concept
+- Suspension behavior (spring & damper)
+- EV rear-wheel independent drive (in-wheel motors × 2)
+- Simple torque vectoring
+
+## Features
+
+- **Real-time 3D Physics**: Built with Three.js/R3F and Rapier physics engine
+- **HUD Telemetry**: Speed, steering angle, yaw rate, throttle/brake status, wheel loads, and drive forces
+- **Parameter Adjustment**: Real-time tuning of suspension, tires, powertrain, and steering parameters via Leva controls
+- **Multiple Track Types**: Straight (braking test), Circle (steady-state cornering), Slalom
+- **Educational Focus**: Transparent chassis visualization to observe suspension and tire behavior
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 20+ and npm 10+
+
+### Installation
+
+```bash
+npm install
+```
+
+### Development
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) with your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Build for Production
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+```
 
-## Learn More
+### Deploy to Vercel
 
-To learn more about Next.js, take a look at the following resources:
+The project is ready to deploy on Vercel:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+```bash
+vercel
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Controls
 
-## Deploy on Vercel
+### Driving
+- `W` / `↑` : Throttle
+- `S` / `↓` : Brake
+- `A` / `←` : Steer Left  
+- `D` / `→` : Steer Right
+- `Space` : Brake
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### System
+- `R` : Reset Vehicle
+- `Esc` : Pause/Resume
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Adjustable Parameters
+
+### Suspension
+- **stiffness**: Spring constant [N/m]
+- **damping**: Damping coefficient [N·s/m]
+- **restLength**: Natural length [m]
+
+### Tires
+- **frictionCoeff**: Friction coefficient μ
+- **corneringStiffness**: Lateral force coefficient [N/rad]
+
+### Powertrain
+- **maxDriveForce**: Maximum drive force [N]
+- **maxBrakeForce**: Maximum brake force [N]
+- **tvGain**: Torque vectoring gain
+
+### Steering
+- **maxSteerAngle**: Maximum steering angle [rad]
+
+### Track
+- **type**: Straight (直線), Circle (定常円), Slalom (スラローム)
+
+## Project Structure
+
+```
+src/
+├── app/
+│   ├── page.tsx              # Landing page
+│   ├── play/page.tsx         # 3D simulation page
+│   └── tutorial/page.tsx     # Tutorial & documentation
+├── components/
+│   ├── canvas/
+│   │   ├── Scene.tsx         # Three.js canvas & physics setup
+│   │   ├── Car/
+│   │   │   ├── CarChassis.tsx
+│   │   │   ├── WheelVisual.tsx
+│   │   │   └── useVehiclePhysics.ts  # Core physics implementation
+│   │   └── Track/
+│   │       ├── Ground.tsx
+│   │       └── Obstacles.tsx
+│   └── hud/
+│       └── HUD.tsx           # Telemetry display
+├── store/
+│   └── useVehicleStore.ts    # State management (Zustand)
+└── lib/
+    ├── mathUtils.ts
+    └── vehicleSpecs.ts
+```
+
+## Technology Stack
+
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript 5
+- **3D**: React Three Fiber v9 / Three.js
+- **Physics**: @react-three/rapier (Rapier physics engine)
+- **UI**: Leva (parameter controls) + Tailwind CSS
+- **State**: Zustand
+
+## Learning Objectives
+
+1. **Vehicle Dynamics**: Observe acceleration, braking, and cornering behavior
+2. **Tire Friction**: Understand the friction circle concept and μ (friction coefficient)
+3. **Suspension**: See how spring stiffness and damping affect ride and handling
+4. **Torque Vectoring**: Experience how independent rear wheel drive improves cornering
+
+## Development
+
+This project uses:
+- ESLint for code linting
+- TypeScript for type safety
+- Tailwind CSS for styling
+
+## License
+
+This project is for educational purposes.
+
+## Links
+
+- [Next.js Documentation](https://nextjs.org/docs)
+- [React Three Fiber](https://docs.pmnd.rs/react-three-fiber)
+- [Rapier Physics](https://rapier.rs/)
+
+---
+
+Built with ❤️ for learning vehicle dynamics
